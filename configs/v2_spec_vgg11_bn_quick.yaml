@@ -1,0 +1,33 @@
+# First GPU run on Gottfried: VGG11_BN on a stratified slice of the v2 dataset.
+# Purpose is a working pipeline plus a real per-epoch time, not a final number.
+# Safe to run while the download is still going: limit_samples draws from the
+# files present when the job starts.
+experiment: v2_spec_vgg11_bn_quick
+results_dir: results
+seed: 0
+data:
+  format: v2
+  path: ${DATA_ROOT}/v2_files
+  representation: spec
+  spec_mode: complex
+  n_fft: 1024
+  limit_samples: 2100          # raise once the full 17,744 files are on disk
+splits:
+  file: results/splits_v2_quick_seed0.json   # delete it if limit_samples changes
+  n_folds: 5
+  val_frac: 0.2
+model:
+  name: vgg11_bn
+  dim: 2
+train:
+  epochs: 3
+  batch_size: 16
+  optimizer: adam
+  lr: 0.005
+  weight_decay: 0
+  plateau: null
+  balanced_sampler: true
+  num_workers: 12
+  amp: bf16                    # GH200; set to null for plain fp32
+  max_batches_per_epoch: null
+  save_embeddings: false

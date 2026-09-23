@@ -1,0 +1,30 @@
+# IQ (1D) VGG11 on dataset v1 -- NCTA 2023 setup (Table 3, row "IQ VGG11").
+experiment: v1_iq_vgg11
+results_dir: results
+seed: 0
+data:
+  format: v1
+  path: ${DATA_ROOT}/v1_memmap
+  representation: iq                # raw 2x16384 IQ vectors
+  spec_mode: complex
+  n_fft: 128
+  limit_samples: null
+splits:
+  file: results/splits_v1_seed0.json   # same file as v1_spec_vgg11
+  n_folds: 5
+  val_frac: 0.2
+model:
+  name: vgg11
+  dim: 1
+train:
+  epochs: 25
+  batch_size: 64
+  optimizer: sgd
+  lr: 0.005
+  momentum: 0.9
+  weight_decay: 0
+  plateau: {factor: 0.1, patience: 3}
+  balanced_sampler: true
+  num_workers: 4
+  max_batches_per_epoch: null
+  save_embeddings: true

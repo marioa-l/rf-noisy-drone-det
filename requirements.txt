@@ -1,0 +1,9 @@
+torch>=2.4
+numpy
+scipy
+scikit-learn
+pandas
+matplotlib
+pyyaml
+tqdm
+kaggle

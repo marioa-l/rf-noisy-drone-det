@@ -1,0 +1,31 @@
+# Same slice and folds as v2_spec_vgg11_bn_quick, but the 1D model on raw IQ.
+# Sharing the splits file is what makes the per-sample agreement analysis valid.
+experiment: v2_iq_vgg11_bn_quick
+results_dir: results
+seed: 0
+data:
+  format: v2
+  path: ${DATA_ROOT}/v2_files
+  representation: iq
+  spec_mode: complex
+  n_fft: 1024
+  limit_samples: 2100
+splits:
+  file: results/splits_v2_quick_seed0.json
+  n_folds: 5
+  val_frac: 0.2
+model:
+  name: vgg11_bn
+  dim: 1
+train:
+  epochs: 3
+  batch_size: 16
+  optimizer: adam
+  lr: 0.005
+  weight_decay: 0
+  plateau: null
+  balanced_sampler: true
+  num_workers: 12
+  amp: bf16
+  max_batches_per_epoch: null
+  save_embeddings: false

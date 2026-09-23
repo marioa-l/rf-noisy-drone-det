@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.DS_Store
+data/
+pretrained/
+results/
+!results/scenario/
+*.pt
+*.pth
+*.pkl
+*.npy
+*.zip

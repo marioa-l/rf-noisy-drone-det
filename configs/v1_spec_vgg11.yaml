@@ -1,0 +1,30 @@
+# Spectrogram (2D) VGG11 on dataset v1 -- NCTA 2023 setup (Table 3, row "SPEC VGG11").
+experiment: v1_spec_vgg11
+results_dir: results
+seed: 0
+data:
+  format: v1
+  path: ${DATA_ROOT}/v1_memmap      # output of scripts/convert_v1.py
+  representation: spec              # v1 ships a precomputed 2x128x128 complex spectrogram
+  spec_mode: complex                # complex (authors: Re/Im channels) | logpower (1-channel image)
+  n_fft: 128
+  limit_samples: null
+splits:
+  file: results/splits_v1_seed0.json   # shared with v1_iq_vgg11 -> identical test folds per sample
+  n_folds: 5
+  val_frac: 0.2
+model:
+  name: vgg11
+  dim: 2
+train:
+  epochs: 25
+  batch_size: 64
+  optimizer: sgd
+  lr: 0.005
+  momentum: 0.9
+  weight_decay: 0
+  plateau: {factor: 0.1, patience: 3}
+  balanced_sampler: true
+  num_workers: 4
+  max_batches_per_epoch: null
+  save_embeddings: true

@@ -1,0 +1,17 @@
+# Smoke test on synthetic data (scripts/make_synthetic.py data/synthetic).
+experiment: smoke_v1_spec
+results_dir: results/smoke
+seed: 0
+data: {format: v1, path: data/synthetic/v1_memmap, representation: spec, spec_mode: complex, n_fft: 128, limit_samples: null}
+splits: {file: results/smoke/splits_v1.json, n_folds: 3, val_frac: 0.2}
+model: {name: vgg11, dim: 2}
+train:
+  epochs: 3
+  batch_size: 16
+  optimizer: sgd
+  lr: 0.005
+  momentum: 0.9
+  plateau: {factor: 0.1, patience: 3}
+  balanced_sampler: true
+  num_workers: 0
+  save_embeddings: true

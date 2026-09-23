@@ -1,0 +1,29 @@
+# Spectrogram (2D) VGG11_BN on dataset v2 -- JRFID 2024 setup (Table VI). ~5 min/epoch on an A100.
+experiment: v2_spec_vgg11_bn
+results_dir: results
+seed: 0
+data:
+  format: v2
+  path: ${DATA_ROOT}/v2_files       # directory with IQdata_sample*_target*_snr*.pt + class_stats.csv
+  representation: spec              # 2x1024x1024 complex STFT computed on the fly
+  spec_mode: complex
+  n_fft: 1024
+  limit_samples: null
+splits:
+  file: results/splits_v2_seed0.json   # shared with v2_iq_vgg11_bn
+  n_folds: 5
+  val_frac: 0.2
+model:
+  name: vgg11_bn
+  dim: 2
+train:
+  epochs: 50
+  batch_size: 8
+  optimizer: adam
+  lr: 0.005
+  weight_decay: 0
+  plateau: null
+  balanced_sampler: true
+  num_workers: 4
+  max_batches_per_epoch: null
+  save_embeddings: true

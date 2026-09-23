@@ -1,0 +1,29 @@
+# IQ (1D) VGG11_BN on dataset v2 (2x1048576 vectors). Not in the JRFID paper; HPC only.
+experiment: v2_iq_vgg11_bn
+results_dir: results
+seed: 0
+data:
+  format: v2
+  path: ${DATA_ROOT}/v2_files
+  representation: iq
+  spec_mode: complex
+  n_fft: 1024
+  limit_samples: null
+splits:
+  file: results/splits_v2_seed0.json   # same file as v2_spec_vgg11_bn
+  n_folds: 5
+  val_frac: 0.2
+model:
+  name: vgg11_bn
+  dim: 1
+train:
+  epochs: 50
+  batch_size: 8
+  optimizer: adam
+  lr: 0.005
+  weight_decay: 0
+  plateau: null
+  balanced_sampler: true
+  num_workers: 4
+  max_batches_per_epoch: null
+  save_embeddings: true

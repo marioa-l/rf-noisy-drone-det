@@ -1,0 +1,16 @@
+# Smoke test of the v2 per-file loader + on-the-fly STFT on synthetic data (65536-sample vectors).
+experiment: smoke_v2_spec
+results_dir: results/smoke
+seed: 0
+data: {format: v2, path: data/synthetic/v2_files, representation: spec, spec_mode: complex, n_fft: 1024, limit_samples: 140}
+splits: {file: results/smoke/splits_v2.json, n_folds: 2, val_frac: 0.2}
+model: {name: vgg11_bn, dim: 2}
+train:
+  epochs: 2
+  batch_size: 8
+  optimizer: adam
+  lr: 0.005
+  plateau: null
+  balanced_sampler: true
+  num_workers: 0
+  save_embeddings: false
