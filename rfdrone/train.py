@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+import yaml
 from sklearn.metrics import accuracy_score, balanced_accuracy_score
 from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
 from tqdm import tqdm
@@ -179,8 +180,19 @@ def main(argv=None):
     ap.add_argument("--folds", type=int, nargs="*", help="subset of folds to train (default: all)")
     ap.add_argument("--device", default="auto")
     ap.add_argument("--overwrite", action="store_true", help="retrain folds that already have results")
+    ap.add_argument("--set", nargs="*", default=[], metavar="KEY=VALUE",
+                    help="config overrides, e.g. --set data.normalize=power experiment=v2_spec_norm")
     a = ap.parse_args(argv)
     cfg = load_config(a.config)
+    for item in a.set:
+        key, _, value = item.partition("=")
+        node, *rest = key.split(".")
+        target = cfg
+        while rest:
+            target = target[node]
+            node, *rest = rest
+        target[node] = yaml.safe_load(value)
+        print(f"override: {key} = {target[node]!r}")
     set_seed(cfg.get("seed", 0))
     device = get_device(a.device)
     dataset = build_dataset(cfg)

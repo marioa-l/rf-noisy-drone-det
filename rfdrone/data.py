@@ -46,11 +46,23 @@ def log_power(spec, eps=1e-12):
     return torch.fft.fftshift(torch.log10(mag), dim=-2).unsqueeze(-3)
 
 
-def to_representation(iq, representation, spec_mode="complex", n_fft=1024, spec=None):
+def to_representation(iq, representation, spec_mode="complex", n_fft=1024, spec=None, normalize=None):
     """Map a raw IQ sample (2, L) to the model input. `spec` is an optional
-    precomputed complex spectrogram (v1 dataset ships one)."""
+    precomputed complex spectrogram (v1 dataset ships one).
+
+    normalize='power' scales the window to unit mean power. The dataset mixes a
+    burst-normalised drone signal with a full-window-normalised noise vector, so
+    the total power of a sample is (k*d+1)/(k+1) for a drone and 1 for noise:
+    a scalar that leaks both the SNR and the transmitter. Normalising per window
+    removes that cue and is what any honest comparison should train on.
+    """
+    iq = iq.float()
+    if normalize == "power":
+        scale = torch.sqrt(iq.pow(2).sum(0).mean()).clamp_min(1e-12)
+        iq = iq / scale
+        spec = None if spec is None else spec.float() / scale
     if representation == "iq":
-        return iq.float()
+        return iq
     spec = spec if spec is not None else complex_spectrogram(iq, n_fft=n_fft)
     return spec.float() if spec_mode == "complex" else log_power(spec.float())
 
@@ -71,9 +83,11 @@ class BaseDroneDataset(Dataset):
     representation = "iq"
     spec_mode = "complex"
     n_fft = 1024
+    normalize = None
 
-    def configure(self, representation, spec_mode, n_fft):
+    def configure(self, representation, spec_mode, n_fft, normalize=None):
         self.representation, self.spec_mode, self.n_fft = representation, spec_mode, n_fft
+        self.normalize = normalize
         return self
 
     @property
@@ -120,7 +134,8 @@ class V1MemmapDataset(BaseDroneDataset):
         x_iq, x_spec = self._mm()
         iq = torch.from_numpy(np.array(x_iq[j]))
         spec = torch.from_numpy(np.array(x_spec[j])) if self.representation == "spec" else None
-        x = to_representation(iq, self.representation, self.spec_mode, self.n_fft, spec=spec)
+        x = to_representation(iq, self.representation, self.spec_mode, self.n_fft, spec=spec,
+                              normalize=self.normalize)
         return x, int(self.targets[j]), int(self.snrs[j]), int(self.sample_ids[j])
 
     def raw(self, sample_id):
@@ -156,7 +171,8 @@ class V2FileDataset(BaseDroneDataset):
 
     def __getitem__(self, i):
         j = self.keep[i]
-        x = to_representation(self._load_iq(j), self.representation, self.spec_mode, self.n_fft)
+        x = to_representation(self._load_iq(j), self.representation, self.spec_mode, self.n_fft,
+                              normalize=self.normalize)
         return x, int(self.targets[j]), int(self.snrs[j]), int(self.sample_ids[j])
 
     def raw(self, sample_id):
@@ -180,7 +196,7 @@ def build_dataset(cfg):
     cls = {"v1": V1MemmapDataset, "v2": V2FileDataset}[d["format"]]
     ds = cls(path, limit=d.get("limit_samples"), seed=cfg.get("seed", 0))
     return ds.configure(d.get("representation", "spec"), d.get("spec_mode", "complex"),
-                        d.get("n_fft", 1024))
+                        d.get("n_fft", 1024), d.get("normalize"))
 
 
 # ---------------------------------------------------------------- splits
