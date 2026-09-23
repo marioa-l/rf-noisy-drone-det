@@ -36,7 +36,8 @@ def make_loaders(dataset, split, tcfg):
     sampler = None
     if tcfg.get("balanced_sampler", True):
         y = dataset.targets[dataset.keep][idx["train"]]
-        counts = np.bincount(y, minlength=len(dataset.class_names)).astype(float)
+        # clip at 1: a class can be absent while the dataset is still downloading
+        counts = np.maximum(np.bincount(y, minlength=len(dataset.class_names)), 1).astype(float)
         w = torch.as_tensor(1.0 / counts[y], dtype=torch.double)
         sampler = WeightedRandomSampler(w, num_samples=len(w), replacement=True)
     common = dict(batch_size=tcfg["batch_size"], num_workers=nw, persistent_workers=nw > 0,
@@ -187,8 +188,13 @@ def main(argv=None):
     exp_dir = Path(cfg.get("results_dir", "results")) / cfg["experiment"]
     exp_dir.mkdir(parents=True, exist_ok=True)
     json.dump(cfg, open(exp_dir / "config.json", "w"), indent=2)
+    counts = np.bincount(dataset.targets[dataset.keep], minlength=len(dataset.class_names))
     print(f"device={device} dataset={type(dataset).__name__} n={len(dataset)} "
           f"representation={dataset.representation}/{dataset.spec_mode}")
+    print("samples per class: " + ", ".join(f"{c}={n}" for c, n in zip(dataset.class_names, counts)))
+    if (counts < cfg["splits"]["n_folds"]).any():
+        print("WARNING: some classes have fewer samples than folds; the download is probably "
+              "still running, so these results are provisional")
     for k in (a.folds if a.folds is not None else range(len(splits))):
         out = exp_dir / f"fold{k}"
         if (out / "summary.json").exists() and not a.overwrite:
