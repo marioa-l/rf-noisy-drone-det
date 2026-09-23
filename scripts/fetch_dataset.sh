@@ -40,10 +40,10 @@ if [ "$MODE" = "zip" ]; then
     kaggle datasets download -d "$DS" -p "$DEST" --unzip
 else
     command -v bsdtar >/dev/null || { echo "bsdtar not found; run setup_env.sh or use 'zip' mode"; exit 1; }
-    # -k keeps files already extracted, so re-running resumes the missing ones.
-    curl -sSL --retry 8 --retry-delay 15 --retry-all-errors -u "$KUSER:$KKEY" \
+    # --fail keeps an auth error page from being piped into bsdtar as if it were data.
+    curl -fsSL --retry 8 --retry-delay 15 --retry-all-errors -u "$KUSER:$KKEY" \
         "https://www.kaggle.com/api/v1/datasets/download/$DS" \
-        | bsdtar -x -k -f - -C "$DEST"
+        | bsdtar -x -f - -C "$DEST"
 fi
 
 echo "done: $(find "$DEST" -name 'IQdata_sample*.pt' | wc -l) sample files"

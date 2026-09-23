@@ -136,10 +136,11 @@ class V2FileDataset(BaseDroneDataset):
 
     def __init__(self, data_dir, limit=None, seed=0):
         self.data_dir = Path(data_dir)
-        files = sorted(f for f in os.listdir(self.data_dir) if FILE_RE.match(f))
+        # rglob so the dataset still loads if the archive unpacked into a subfolder
+        files = sorted(str(p.relative_to(self.data_dir)) for p in self.data_dir.rglob("IQdata_sample*.pt"))
         if not files:
-            raise FileNotFoundError(f"no IQdata_sample*.pt files in {self.data_dir}")
-        meta = np.array([[int(g) for g in FILE_RE.match(f).groups()] for f in files])
+            raise FileNotFoundError(f"no IQdata_sample*.pt files under {self.data_dir}")
+        meta = np.array([[int(g) for g in FILE_RE.match(Path(f).name).groups()] for f in files])
         order = np.argsort(meta[:, 0])
         self.files = [files[i] for i in order]
         self.sample_ids, self.targets, self.snrs = meta[order, 0], meta[order, 1], meta[order, 2]

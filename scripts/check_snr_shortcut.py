@@ -39,10 +39,11 @@ FEATURES = ["power", "crest_factor", "duty_proxy", "kurtosis", "spectral_flatnes
 
 
 def list_samples(data_dir):
-    rows = [(f.name, *map(int, FILE_RE.match(f.name).groups()))
-            for f in Path(data_dir).iterdir() if FILE_RE.match(f.name)]
+    data_dir = Path(data_dir)
+    rows = [(str(p.relative_to(data_dir)), *map(int, FILE_RE.match(p.name).groups()))
+            for p in data_dir.rglob("IQdata_sample*.pt") if FILE_RE.match(p.name)]
     if not rows:
-        raise FileNotFoundError(f"no IQdata_sample*.pt files in {data_dir}")
+        raise FileNotFoundError(f"no IQdata_sample*.pt files under {data_dir}")
     return pd.DataFrame(rows, columns=["file", "sample_id", "target", "snr"])
 
 
