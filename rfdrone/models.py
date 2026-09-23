@@ -63,11 +63,34 @@ class VGG(nn.Module):
                 nn.init.zeros_(m.bias)
 
 
-def build_model(name, dim, num_classes, in_channels=2):
-    """name: vgg11 | vgg11_bn | vgg13 | ... ; dim: 1 (IQ) or 2 (spectrogram)."""
+def build_model(name, dim, num_classes, in_channels=2, img_size=None):
+    """name: vgg11 | vgg11_bn | ... for the in-house VGG, or timm:<model> for the
+    torchvision-style zoo (resnet18, vit_small_patch16_224, swin_tiny_patch4_window7_224, ...).
+    dim: 1 (IQ) or 2 (spectrogram). img_size is forwarded to models that need it."""
+    if name.startswith("timm:"):
+        import timm
+        kwargs = dict(num_classes=num_classes, in_chans=in_channels, pretrained=False)
+        if img_size:
+            try:
+                return timm.create_model(name[5:], img_size=img_size, **kwargs)
+            except TypeError:
+                pass  # convolutional models infer their input size
+        return timm.create_model(name[5:], **kwargs)
     base, batch_norm = (name[:-3], True) if name.endswith("_bn") else (name, False)
     return VGG(CFGS[base], dim=dim, batch_norm=batch_norm, num_classes=num_classes,
                in_channels=in_channels)
+
+
+def embeddings(model, x):
+    """Penultimate features, for the in-house VGG and for timm models alike."""
+    if hasattr(model, "embed"):
+        return model.embed(x)
+    feats = model.forward_features(x)
+    if feats.dim() == 4:        # B, C, H, W
+        return feats.mean((2, 3))
+    if feats.dim() == 3:        # B, tokens, C
+        return feats.mean(1)
+    return feats
 
 
 def count_params(model):

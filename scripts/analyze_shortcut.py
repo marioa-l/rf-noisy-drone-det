@@ -40,15 +40,20 @@ def theoretical_power(snr_db, duty):
     return (k * duty + 1) / (k + 1)
 
 
+DRONE_COLORS = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#D55E00"]
+
+
 def plot_leak(power_tab, duty, acc_band, n_classes, noise_name, out):
     fig, (a0, a1) = plt.subplots(1, 2, figsize=(12, 4.4))
-    cols = palette(len(power_tab))
-    for (name, row), c in zip(power_tab.iterrows(), cols):
-        a0.plot(row.index.astype(float), row.values, marker="o", ms=4, lw=1.6, color=c, label=name)
+    drones = iter(DRONE_COLORS)
+    for name, row in power_tab.iterrows():
+        is_noise = name == noise_name
+        a0.plot(row.index.astype(float), row.values, marker="o", ms=4,
+                lw=2.6 if is_noise else 1.6, color="#1B1D21" if is_noise else next(drones), label=name)
     if duty:
         snr = np.arange(-20, 31, 2)
-        a0.plot(snr, theoretical_power(snr, np.median(list(duty.values()))), ls="--", lw=1.4, color="black",
-                label=r"$(k\,d+1)/(k+1)$")
+        a0.plot(snr, theoretical_power(snr, np.median(list(duty.values()))), ls="--", lw=1.6, color="#888888",
+                label=r"theory, median $d$: $(k\,d+1)/(k+1)$")
     a0.set_yscale("log")
     a0.set_xlabel("SNR (dB)")
     a0.set_ylabel("Mean total power of the sample")

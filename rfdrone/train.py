@@ -27,7 +27,7 @@ from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
 from tqdm import tqdm
 
 from .data import build_dataset, get_splits
-from .models import build_model, count_params
+from .models import build_model, count_params, embeddings
 from .utils import get_device, load_config, mean_std, save_json, set_seed
 
 
@@ -84,7 +84,7 @@ def predict(model, loader, device, with_embeddings=False, amp=None):
             logits = model(x).float()
         probs.append(torch.softmax(logits, 1).cpu())
         if with_embeddings:
-            embs.append(model.embed(x).float().cpu())
+            embs.append(embeddings(model, x).float().cpu())
         rows.append(torch.stack([sid, y, snr], 1))
     rows, probs = torch.cat(rows).numpy(), torch.cat(probs).numpy()
     df = pd.DataFrame(rows, columns=["sample_id", "target", "snr"])
@@ -123,7 +123,8 @@ def train_fold(cfg, dataset, split, fold, out_dir, device):
     tcfg = cfg["train"]
     loaders = make_loaders(dataset, split, tcfg)
     model = build_model(cfg["model"]["name"], cfg["model"]["dim"], len(dataset.class_names),
-                        in_channels=dataset.in_channels).to(device)
+                        in_channels=dataset.in_channels,
+                        img_size=cfg["model"].get("img_size")).to(device)
     print(f"fold {fold}: {cfg['model']['name']} dim={cfg['model']['dim']} params={count_params(model):,} "
           f"train/val/test = {len(split['train'])}/{len(split['val'])}/{len(split['test'])}")
     optimizer, scheduler = make_optimizer(model, tcfg)

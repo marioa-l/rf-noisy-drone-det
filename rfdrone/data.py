@@ -46,7 +46,8 @@ def log_power(spec, eps=1e-12):
     return torch.fft.fftshift(torch.log10(mag), dim=-2).unsqueeze(-3)
 
 
-def to_representation(iq, representation, spec_mode="complex", n_fft=1024, spec=None, normalize=None):
+def to_representation(iq, representation, spec_mode="complex", n_fft=1024, spec=None, normalize=None,
+                      resize=None):
     """Map a raw IQ sample (2, L) to the model input. `spec` is an optional
     precomputed complex spectrogram (v1 dataset ships one).
 
@@ -64,7 +65,11 @@ def to_representation(iq, representation, spec_mode="complex", n_fft=1024, spec=
     if representation == "iq":
         return iq
     spec = spec if spec is not None else complex_spectrogram(iq, n_fft=n_fft)
-    return spec.float() if spec_mode == "complex" else log_power(spec.float())
+    spec = spec.float() if spec_mode == "complex" else log_power(spec.float())
+    if resize:
+        spec = torch.nn.functional.interpolate(spec[None], size=tuple(resize), mode="bilinear",
+                                               align_corners=False, antialias=True)[0]
+    return spec
 
 
 def input_channels(representation, spec_mode):
@@ -84,10 +89,11 @@ class BaseDroneDataset(Dataset):
     spec_mode = "complex"
     n_fft = 1024
     normalize = None
+    resize = None
 
-    def configure(self, representation, spec_mode, n_fft, normalize=None):
+    def configure(self, representation, spec_mode, n_fft, normalize=None, resize=None):
         self.representation, self.spec_mode, self.n_fft = representation, spec_mode, n_fft
-        self.normalize = normalize
+        self.normalize, self.resize = normalize, resize
         return self
 
     @property
@@ -135,7 +141,7 @@ class V1MemmapDataset(BaseDroneDataset):
         iq = torch.from_numpy(np.array(x_iq[j]))
         spec = torch.from_numpy(np.array(x_spec[j])) if self.representation == "spec" else None
         x = to_representation(iq, self.representation, self.spec_mode, self.n_fft, spec=spec,
-                              normalize=self.normalize)
+                              normalize=self.normalize, resize=self.resize)
         return x, int(self.targets[j]), int(self.snrs[j]), int(self.sample_ids[j])
 
     def raw(self, sample_id):
@@ -172,7 +178,7 @@ class V2FileDataset(BaseDroneDataset):
     def __getitem__(self, i):
         j = self.keep[i]
         x = to_representation(self._load_iq(j), self.representation, self.spec_mode, self.n_fft,
-                              normalize=self.normalize)
+                              normalize=self.normalize, resize=self.resize)
         return x, int(self.targets[j]), int(self.snrs[j]), int(self.sample_ids[j])
 
     def raw(self, sample_id):
@@ -196,7 +202,7 @@ def build_dataset(cfg):
     cls = {"v1": V1MemmapDataset, "v2": V2FileDataset}[d["format"]]
     ds = cls(path, limit=d.get("limit_samples"), seed=cfg.get("seed", 0))
     return ds.configure(d.get("representation", "spec"), d.get("spec_mode", "complex"),
-                        d.get("n_fft", 1024), d.get("normalize"))
+                        d.get("n_fft", 1024), d.get("normalize"), d.get("resize"))
 
 
 # ---------------------------------------------------------------- splits
